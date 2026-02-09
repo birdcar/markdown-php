@@ -4,18 +4,24 @@ A [league/commonmark][] extension suite for **Birdcar Flavored Markdown** (BFM) 
 
 See the [BFM spec](https://github.com/birdcar/markdown-spec) for the full syntax definition.
 
+## Packages
+
+This is a monorepo containing the core library and framework integration packages:
+
+| Package | Description | Install |
+|---------|-------------|---------|
+| `birdcar/markdown-php` | Core library (this repo root) | `composer require birdcar/markdown-php` |
+| [`birdcar/markdown-laravel`](packages/laravel/) | Laravel service provider, `Str::bfm()` macro, `@bfmStyles` directive | `composer require birdcar/markdown-laravel` |
+| [`birdcar/markdown-filament`](packages/filament/) | Filament v4 `BfmEditor`, `BfmTextColumn`, `BfmTextEntry` | `composer require birdcar/markdown-filament` |
+
 ## Requirements
 
 - PHP 8.2+
 - league/commonmark ^2.7
 
-## Install
-
-```bash
-composer require birdcar/markdown-php
-```
-
 ## Quick Start
+
+### Core library (any PHP project)
 
 ```php
 use Birdcar\Markdown\Environment\BfmEnvironmentFactory;
@@ -37,9 +43,83 @@ Hey @sarah, can you review this?
 MD);
 ```
 
-## Usage
+### Laravel
 
-### The factory
+```bash
+composer require birdcar/markdown-laravel
+```
+
+Zero config — the service provider auto-discovers and registers everything:
+
+```php
+use Illuminate\Support\Str;
+
+// Render BFM to HTML
+$html = Str::bfm('- [>] Call dentist //due:2025-03-01');
+
+// Inline rendering (no wrapping <p> tags)
+$html = Str::inlineBfm('Hey @sarah');
+
+// Access the configured converter directly
+$converter = app(\League\CommonMark\MarkdownConverter::class);
+```
+
+In Blade templates:
+
+```blade
+{{-- Include BFM default styles --}}
+@bfmStyles
+
+{{-- Render content --}}
+<article class="prose">
+    {!! Str::bfm($post->body) !!}
+</article>
+```
+
+Publish the config to customize the render profile or bind resolver classes:
+
+```bash
+php artisan vendor:publish --tag=bfm-config
+```
+
+```php
+// config/bfm.php
+return [
+    'profile' => 'html',  // 'html', 'email', or 'plain'
+    'resolvers' => [
+        'mention' => \App\Markdown\UserMentionResolver::class,
+        'embed'   => \App\Markdown\OEmbedResolver::class,
+    ],
+];
+```
+
+### Filament v4
+
+```bash
+composer require birdcar/markdown-filament
+```
+
+Drop-in replacement for Filament's `MarkdownEditor` with server-side BFM preview:
+
+```php
+use Birdcar\Markdown\Filament\Forms\Components\BfmEditor;
+use Birdcar\Markdown\Filament\Tables\Columns\BfmTextColumn;
+use Birdcar\Markdown\Filament\Infolists\Components\BfmTextEntry;
+
+// Form field with live BFM preview
+BfmEditor::make('content')
+    ->previewDebounce(300);
+
+// Table column that renders BFM
+BfmTextColumn::make('content');
+
+// Infolist entry that renders BFM
+BfmTextEntry::make('content');
+```
+
+The `BfmEditor` provides a preview toggle button that renders BFM syntax server-side via Filament v4's `callSchemaComponentMethod` — no traits or page-level configuration needed.
+
+## The Factory
 
 `BfmEnvironmentFactory::create()` returns a fully configured `Environment` with CommonMark, GFM (minus task lists, which BFM replaces), and all five BFM extensions:
 
@@ -55,9 +135,9 @@ $environment = BfmEnvironmentFactory::create(
 );
 ```
 
-### Use individual extensions
+### Individual extensions
 
-Each feature is a self-contained extension. Use only what you need:
+Each feature is a self-contained extension:
 
 ```php
 use League\CommonMark\Environment\Environment;
@@ -75,8 +155,6 @@ $converter = new MarkdownConverter($environment);
 echo $converter->convert('- [>] Call dentist //due:2025-03-01');
 ```
 
-Available extensions:
-
 | Class | Description |
 |---|---|
 | `TaskExtension` | `[x]`, `[>]`, `[!]`, etc. in list items |
@@ -85,7 +163,7 @@ Available extensions:
 | `CalloutExtension` | `@callout`/`@endcallout` container blocks |
 | `EmbedExtension` | `@embed`/`@endembed` leaf blocks |
 
-### Implement resolvers
+## Resolvers
 
 Mentions and embeds can be resolved at render time by implementing the contract interfaces.
 
@@ -94,23 +172,16 @@ Mentions and embeds can be resolved at render time by implementing the contract 
 ```php
 use Birdcar\Markdown\Contracts\MentionResolverInterface;
 
-class MyMentionResolver implements MentionResolverInterface
+class UserMentionResolver implements MentionResolverInterface
 {
-    /**
-     * @return array{label: string, url: string|null}|null
-     */
     public function resolve(string $identifier): ?array
     {
         $user = User::where('username', $identifier)->first();
 
-        if (! $user) {
-            return null;
-        }
-
-        return [
+        return $user ? [
             'label' => $user->display_name,
             'url' => route('profile.show', $user),
-        ];
+        ] : null;
     }
 }
 ```
@@ -124,134 +195,38 @@ use Birdcar\Markdown\Contracts\EmbedResolverInterface;
 
 class OEmbedResolver implements EmbedResolverInterface
 {
-    /**
-     * @return array{type: string, html?: string, title?: string, ...}|null
-     */
     public function resolve(string $url): ?array
     {
         $response = Http::get('https://noembed.com/embed', ['url' => $url]);
 
-        if ($response->failed()) {
-            return null;
-        }
-
-        return $response->json();
+        return $response->successful() ? $response->json() : null;
     }
 }
 ```
 
 Without a resolver, embeds render as a `<figure>` with a plain link. With a resolver that returns `html`, the resolved HTML is embedded directly.
 
-## Laravel Integration
+## Styling
 
-The package has zero framework dependencies, so it works with any PHP project. Here's how to wire it into Laravel.
+The `@bfmStyles` Blade directive (from `birdcar/markdown-laravel`) outputs a default stylesheet covering all BFM output elements. The stylesheet uses CSS custom properties for theming and supports both `prefers-color-scheme: dark` and class-based dark mode (`.dark`).
 
-### Service provider
+To publish the stylesheet for customization:
 
-```php
-// app/Providers/MarkdownServiceProvider.php
+```bash
+php artisan vendor:publish --tag=bfm-assets
+```
 
-namespace App\Providers;
+Override any variable in your own CSS:
 
-use Birdcar\Markdown\Contracts\EmbedResolverInterface;
-use Birdcar\Markdown\Contracts\MentionResolverInterface;
-use Birdcar\Markdown\Environment\BfmEnvironmentFactory;
-use Birdcar\Markdown\Environment\RenderProfile;
-use Illuminate\Support\ServiceProvider;
-use League\CommonMark\MarkdownConverter;
-
-class MarkdownServiceProvider extends ServiceProvider
-{
-    public function register(): void
-    {
-        $this->app->singleton(MarkdownConverter::class, function ($app) {
-            $environment = BfmEnvironmentFactory::create(
-                profile: RenderProfile::Html,
-                embedResolver: $app->make(EmbedResolverInterface::class),
-                mentionResolver: $app->make(MentionResolverInterface::class),
-            );
-
-            return new MarkdownConverter($environment);
-        });
-
-        $this->app->bind(MentionResolverInterface::class, \App\Markdown\UserMentionResolver::class);
-        $this->app->bind(EmbedResolverInterface::class, \App\Markdown\CachedOEmbedResolver::class);
-    }
+```css
+:root {
+  --bfm-task-priority: #b91c1c;
+  --bfm-mention-bg: #fce7f3;
+  --bfm-mention-text: #9d174d;
 }
 ```
 
-### Blade helper
-
-```php
-// app/helpers.php (autoloaded via composer.json)
-
-use League\CommonMark\MarkdownConverter;
-
-function markdown(string $text): string
-{
-    return (string) app(MarkdownConverter::class)->convert($text);
-}
-```
-
-```blade
-{{-- resources/views/post.blade.php --}}
-<article class="prose">
-    {!! markdown($post->body) !!}
-</article>
-```
-
-### Mention resolver with caching
-
-```php
-// app/Markdown/UserMentionResolver.php
-
-namespace App\Markdown;
-
-use App\Models\User;
-use Birdcar\Markdown\Contracts\MentionResolverInterface;
-use Illuminate\Support\Facades\Cache;
-
-class UserMentionResolver implements MentionResolverInterface
-{
-    public function resolve(string $identifier): ?array
-    {
-        return Cache::remember("mention:{$identifier}", 3600, function () use ($identifier) {
-            $user = User::where('username', $identifier)->first();
-
-            if (! $user) {
-                return null;
-            }
-
-            return [
-                'label' => $user->display_name,
-                'url' => route('profile.show', $user),
-            ];
-        });
-    }
-}
-```
-
-### Email rendering
-
-Use `RenderProfile::Email` when rendering markdown for email notifications:
-
-```php
-// app/Mail/CommentNotification.php
-
-public function build()
-{
-    $environment = BfmEnvironmentFactory::create(
-        profile: RenderProfile::Email,
-        mentionResolver: app(MentionResolverInterface::class),
-    );
-
-    $converter = new MarkdownConverter($environment);
-
-    return $this->view('emails.comment', [
-        'bodyHtml' => (string) $converter->convert($this->comment->body),
-    ]);
-}
-```
+The Filament package automatically loads BFM styles into the admin panel.
 
 ## Syntax Reference
 
