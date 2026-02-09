@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BFM Kitchen Sink — Visual Fixture</title>
+<link rel="stylesheet" href="../packages/laravel/resources/css/bfm.css">
+<style>
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    max-width: 720px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  .fixture-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #9ca3af;
+    margin: 3rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .dark .fixture-label {
+    color: #6b7280;
+    border-bottom-color: #374151;
+  }
+  .dark-section {
+    background: #111827;
+    color: #f9fafb;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    margin-top: 2rem;
+  }
+</style>
+</head>
+<body>
+
+<h1 style="margin-bottom: 0.25em;">BFM Kitchen Sink</h1>
+<p style="color: #6b7280; margin-top: 0;">Visual regression fixture for Birdcar Flavored Markdown styles.</p>
+
+<!-- ==================== LIGHT MODE ==================== -->
+<div class="fixture-label">Light Mode</div>
+
+<h1>Weekly Review</h1>
+<p>Hey <span class="mention">@team</span>, here's where we stand.</p>
+<aside class="callout callout--info">
+<div class="callout__header">Sprint Goal</div>
+<div class="callout__body">
+<p>Ship the new <strong>dashboard</strong> by Friday. See the <a href="https://example.com">design spec</a>.</p>
+</div>
+</aside>
+<h2>Tasks</h2>
+<ul>
+<li data-task="done" class="task-item task-item--done"><p><span class="task-marker task-marker--done" title="Done" data-state="done"><span class="task-marker__icon">✓</span></span>Finalize API contracts</p></li>
+<li data-task="priority" class="task-item task-item--priority"><p><span class="task-marker task-marker--priority" title="Priority" data-state="priority"><span class="task-marker__icon">‼</span></span>Fix auth regression #security <span class="task-mod task-mod--due" data-key="due" data-value="2025-02-07">//due:2025-02-07</span> <span class="task-mod task-mod--hard" data-key="hard">//hard</span></p></li>
+<li data-task="scheduled" class="task-item task-item--scheduled"><p><span class="task-marker task-marker--scheduled" title="Scheduled" data-state="scheduled"><span class="task-marker__icon">▷</span></span>Update documentation <span class="task-mod task-mod--due" data-key="due" data-value="2025-02-14">//due:2025-02-14</span></p></li>
+<li data-task="open" class="task-item task-item--open"><p><span class="task-marker task-marker--open" title="Open" data-state="open"><span class="task-marker__icon">○</span></span>Write integration tests <span class="task-mod task-mod--every" data-key="every" data-value="weekly">//every:weekly</span></p></li>
+<li data-task="event" class="task-item task-item--event"><p><span class="task-marker task-marker--event" title="Event" data-state="event"><span class="task-marker__icon">◆</span></span>Sprint review <span class="task-mod task-mod--due" data-key="due" data-value="2025-02-07">//due:2025-02-07</span> <span class="task-mod task-mod--every" data-key="every" data-value="2-weeks">//every:2-weeks</span></p></li>
+<li data-task="migrated" class="task-item task-item--migrated"><p><span class="task-marker task-marker--migrated" title="Migrated" data-state="migrated"><span class="task-marker__icon">◁</span></span>Migrate legacy endpoints -&gt;q2-backlog</p></li>
+<li data-task="irrelevant" class="task-item task-item--irrelevant"><p><span class="task-marker task-marker--irrelevant" title="Irrelevant" data-state="irrelevant"><span class="task-marker__icon">—</span></span>Remove feature flag (already done by <span class="mention">@sarah</span>)</p></li>
+</ul>
+<h2>Reference</h2>
+<figure class="embed">
+<a href="https://www.youtube.com/watch?v=example" class="embed__link">https://www.youtube.com/watch?v=example</a>
+<figcaption class="embed__caption">Sprint demo recording.</figcaption>
+</figure>
+<aside class="callout callout--warning">
+<div class="callout__body">
+<p>The staging environment will be <strong>down</strong> for maintenance Saturday.</p>
+</div>
+</aside>
+
+<!-- Additional callout types -->
+<div class="fixture-label">Additional Callout Types</div>
+
+<aside class="callout callout--error">
+<div class="callout__header">Error</div>
+<div class="callout__body"><p>Build failed. Check CI logs.</p></div>
+</aside>
+
+<aside class="callout callout--tip">
+<div class="callout__header">Tip</div>
+<div class="callout__body"><p>Use <code>--verbose</code> for more output.</p></div>
+</aside>
+
+<aside class="callout callout--note">
+<div class="callout__body"><p>This is a plain note without a header.</p></div>
+</aside>
+
+<!-- Mention as link -->
+<div class="fixture-label">Mention as Link</div>
+<p>Assigned to <a href="https://example.com/users/sarah" class="mention">@sarah</a> for review.</p>
+
+<!-- ==================== DARK MODE ==================== -->
+<div class="fixture-label">Dark Mode (class-based)</div>
+
+<div class="dark dark-section">
+
+<h1>Weekly Review</h1>
+<p>Hey <span class="mention">@team</span>, here's where we stand.</p>
+<aside class="callout callout--info">
+<div class="callout__header">Sprint Goal</div>
+<div class="callout__body">
+<p>Ship the new <strong>dashboard</strong> by Friday.</p>
+</div>
+</aside>
+<ul>
+<li data-task="done" class="task-item task-item--done"><p><span class="task-marker task-marker--done" title="Done" data-state="done"><span class="task-marker__icon">✓</span></span>Finalize API contracts</p></li>
+<li data-task="priority" class="task-item task-item--priority"><p><span class="task-marker task-marker--priority" title="Priority" data-state="priority"><span class="task-marker__icon">‼</span></span>Fix auth regression <span class="task-mod task-mod--due" data-key="due" data-value="2025-02-07">//due:2025-02-07</span></p></li>
+<li data-task="scheduled" class="task-item task-item--scheduled"><p><span class="task-marker task-marker--scheduled" title="Scheduled" data-state="scheduled"><span class="task-marker__icon">▷</span></span>Update docs</p></li>
+<li data-task="open" class="task-item task-item--open"><p><span class="task-marker task-marker--open" title="Open" data-state="open"><span class="task-marker__icon">○</span></span>Write tests</p></li>
+<li data-task="event" class="task-item task-item--event"><p><span class="task-marker task-marker--event" title="Event" data-state="event"><span class="task-marker__icon">◆</span></span>Sprint review</p></li>
+<li data-task="migrated" class="task-item task-item--migrated"><p><span class="task-marker task-marker--migrated" title="Migrated" data-state="migrated"><span class="task-marker__icon">◁</span></span>Migrate endpoints</p></li>
+<li data-task="irrelevant" class="task-item task-item--irrelevant"><p><span class="task-marker task-marker--irrelevant" title="Irrelevant" data-state="irrelevant"><span class="task-marker__icon">—</span></span>Remove flag</p></li>
+</ul>
+<aside class="callout callout--warning">
+<div class="callout__body"><p>Staging <strong>down</strong> Saturday.</p></div>
+</aside>
+<aside class="callout callout--error">
+<div class="callout__header">Error</div>
+<div class="callout__body"><p>Build failed.</p></div>
+</aside>
+<aside class="callout callout--tip">
+<div class="callout__header">Tip</div>
+<div class="callout__body"><p>Use <code>--verbose</code>.</p></div>
+</aside>
+<figure class="embed">
+<a href="https://example.com" class="embed__link">https://example.com</a>
+<figcaption class="embed__caption">Demo recording.</figcaption>
+</figure>
+<p>Assigned to <a href="#" class="mention">@sarah</a> for review.</p>
+
+</div>
+
+</body>
+</html>
