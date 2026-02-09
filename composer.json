@@ -11,6 +11,9 @@
         "phpunit/phpunit": "^11.0",
         "phpstan/phpstan": "^2.0"
     },
+    "repositories": [
+        { "type": "path", "url": "packages/*" }
+    ],
     "autoload": {
         "psr-4": {
             "Birdcar\\Markdown\\": "src/"
@@ -23,7 +26,9 @@
     },
     "scripts": {
         "test": "phpunit",
+        "test:all": ["@test", "cd packages/laravel && composer test", "cd packages/filament && composer test"],
         "analyse": "phpstan analyse -l 8 src/",
+        "analyse:all": ["@analyse", "cd packages/laravel && composer analyse", "cd packages/filament && composer analyse"],
         "format": "php-cs-fixer fix --dry-run --diff"
     },
     "authors": [
