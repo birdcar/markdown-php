@@ -1,0 +1,8 @@
+parameters:
+    level: 8
+    paths:
+        - src
+    ignoreErrors:
+        -
+            identifier: staticMethod.notFound
+            message: '#Call to an undefined static method Illuminate\\Support\\Str::bfm\(\)#'
