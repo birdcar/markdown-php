@@ -6,8 +6,10 @@ namespace Birdcar\Markdown\Environment;
 
 use Birdcar\Markdown\Block\Callout\CalloutExtension;
 use Birdcar\Markdown\Block\Embed\EmbedExtension;
+use Birdcar\Markdown\Block\Frontmatter\FrontmatterExtension;
 use Birdcar\Markdown\Contracts\EmbedResolverInterface;
 use Birdcar\Markdown\Contracts\MentionResolverInterface;
+use Birdcar\Markdown\Inline\Hashtag\HashtagExtension;
 use Birdcar\Markdown\Inline\Mention\MentionExtension;
 use Birdcar\Markdown\Inline\Task\TaskExtension;
 use Birdcar\Markdown\Inline\TaskModifier\TaskModifierExtension;
@@ -39,10 +41,12 @@ final class BfmEnvironmentFactory
         $environment->addExtension(new StrikethroughExtension());
         $environment->addExtension(new TableExtension());
 
-        // BFM extensions
+        // BFM extensions — front-matter first to capture --- before thematic break
+        $environment->addExtension(new FrontmatterExtension());
         $environment->addExtension(new TaskExtension());
         $environment->addExtension(new TaskModifierExtension());
         $environment->addExtension(new MentionExtension($mentionResolver));
+        $environment->addExtension(new HashtagExtension());
         $environment->addExtension(new CalloutExtension($profile));
         $environment->addExtension(new EmbedExtension($embedResolver));
 
