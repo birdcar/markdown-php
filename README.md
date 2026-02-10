@@ -1,6 +1,6 @@
 # birdcar/markdown-php
 
-A [league/commonmark][] extension suite for **Birdcar Flavored Markdown** (BFM) — a superset of CommonMark and GFM that adds directive blocks, extended task lists, task modifiers, and mentions.
+A [league/commonmark][] extension suite for **Birdcar Flavored Markdown** (BFM) — a superset of CommonMark and GFM that adds YAML front-matter, directive blocks, extended task lists, task modifiers, mentions, hashtags, metadata extraction, and document merging.
 
 See the [BFM spec](https://github.com/birdcar/markdown-spec) for the full syntax definition.
 
@@ -18,6 +18,7 @@ This is a monorepo containing the core library and framework integration package
 
 - PHP 8.2+
 - league/commonmark ^2.7
+- symfony/yaml ^8.0
 
 ## Quick Start
 
@@ -31,6 +32,12 @@ $environment = BfmEnvironmentFactory::create();
 $converter = new MarkdownConverter($environment);
 
 echo $converter->convert(<<<'MD'
+---
+title: Sprint Planning
+tags:
+  - engineering
+---
+
 - [>] Call the dentist //due:2025-03-01
 - [!] File taxes //due:2025-04-15 //hard
 - [x] Buy groceries
@@ -39,7 +46,7 @@ echo $converter->convert(<<<'MD'
 Don't forget to bring your **insurance card**.
 @endcallout
 
-Hey @sarah, can you review this?
+Hey @sarah, can you review this? #urgent
 MD);
 ```
 
@@ -121,7 +128,7 @@ The `BfmEditor` provides a preview toggle button that renders BFM syntax server-
 
 ## The Factory
 
-`BfmEnvironmentFactory::create()` returns a fully configured `Environment` with CommonMark, GFM (minus task lists, which BFM replaces), and all five BFM extensions:
+`BfmEnvironmentFactory::create()` returns a fully configured `Environment` with CommonMark, GFM (minus task lists, which BFM replaces), and all seven BFM extensions:
 
 ```php
 use Birdcar\Markdown\Environment\BfmEnvironmentFactory;
@@ -157,9 +164,11 @@ echo $converter->convert('- [>] Call dentist //due:2025-03-01');
 
 | Class | Description |
 |---|---|
+| `FrontmatterExtension` | YAML front-matter (`---` blocks) |
 | `TaskExtension` | `[x]`, `[>]`, `[!]`, etc. in list items |
 | `TaskModifierExtension` | `//due:2025-03-01`, `//hard` metadata |
 | `MentionExtension` | `@username` inline references |
+| `HashtagExtension` | `#project` inline tags |
 | `CalloutExtension` | `@callout`/`@endcallout` container blocks |
 | `EmbedExtension` | `@embed`/`@endembed` leaf blocks |
 
@@ -206,6 +215,100 @@ class OEmbedResolver implements EmbedResolverInterface
 
 Without a resolver, embeds render as a `<figure>` with a plain link. With a resolver that returns `html`, the resolved HTML is embedded directly.
 
+**ComputedFieldResolverInterface:**
+
+Extend metadata extraction with custom computed fields:
+
+```php
+use Birdcar\Markdown\Contracts\ComputedFieldResolverInterface;
+use League\CommonMark\Node\Block\Document;
+
+class ReadabilityResolver implements ComputedFieldResolverInterface
+{
+    public function resolve(Document $document, array $frontmatter, array $builtins): array
+    {
+        return [
+            'isLongRead' => $builtins['wordCount'] > 1000,
+        ];
+    }
+}
+```
+
+## Metadata Extraction
+
+Extract structured metadata from parsed documents:
+
+```php
+use Birdcar\Markdown\Environment\BfmEnvironmentFactory;
+use Birdcar\Markdown\Metadata\MetadataExtractor;
+use League\CommonMark\MarkdownConverter;
+use League\CommonMark\Parser\MarkdownParser;
+
+$environment = BfmEnvironmentFactory::create();
+$parser = new MarkdownParser($environment);
+
+$document = $parser->parse(<<<'MD'
+---
+title: My Post
+tags:
+  - bfm
+---
+
+A post about #typescript with a [link](https://example.com).
+
+- [x] Write draft
+- [ ] Publish //due:2025-06-01
+MD);
+
+$extractor = new MetadataExtractor();
+$meta = $extractor->extract($document);
+
+$meta->frontmatter;          // ['title' => 'My Post', 'tags' => ['bfm']]
+$meta->computed['wordCount']; // 9
+$meta->computed['readingTime']; // 1
+$meta->computed['tags'];      // ['bfm', 'typescript']
+$meta->computed['tasks'];     // TaskCollection with ->open, ->done, ->all, etc.
+$meta->computed['links'];     // [LinkReference { url, title, line }]
+```
+
+Custom computed fields via resolvers:
+
+```php
+$extractor = new MetadataExtractor(
+    resolvers: [new ReadabilityResolver()],
+);
+
+$meta = $extractor->extract($document);
+$meta->custom['isLongRead']; // false
+```
+
+## Document Merging
+
+Deep-merge front-matter and concatenate body content across multiple documents:
+
+```php
+use Birdcar\Markdown\Merge\BfmDocument;
+use Birdcar\Markdown\Merge\DocumentMerger;
+use Birdcar\Markdown\Merge\MergeOptions;
+use Birdcar\Markdown\Merge\MergeStrategy;
+
+$a = new BfmDocument(frontmatter: ['tags' => ['a']], body: 'Content A');
+$b = new BfmDocument(frontmatter: ['tags' => ['b'], 'title' => 'B'], body: 'Content B');
+
+$merger = new DocumentMerger();
+$merged = $merger->merge([$a, $b]);
+// $merged->frontmatter = ['tags' => ['a', 'b'], 'title' => 'B']
+// $merged->body = "Content A\n\nContent B"
+
+// Configurable strategies
+$merger->merge([$a, $b], new MergeOptions(strategy: MergeStrategy::FirstWins));
+$merger->merge([$a, $b], new MergeOptions(strategy: MergeStrategy::Error));  // throws on scalar conflicts
+$merger->merge([$a, $b], new MergeOptions(
+    strategy: fn (string $key, mixed $existing, mixed $incoming) => $existing . $incoming,
+));
+$merger->merge([$a, $b], new MergeOptions(separator: "\n---\n"));  // custom body separator
+```
+
 ## Styling
 
 The `@bfmStyles` Blade directive (from `birdcar/markdown-laravel`) outputs a default stylesheet covering all BFM output elements. The stylesheet uses CSS custom properties for theming and supports both `prefers-color-scheme: dark` and class-based dark mode (`.dark`).
@@ -229,6 +332,24 @@ Override any variable in your own CSS:
 The Filament package automatically loads BFM styles into the admin panel.
 
 ## Syntax Reference
+
+### YAML Front-matter
+
+```markdown
+---
+title: My Document
+tags:
+  - bfm
+  - markdown
+author:
+  name: Nick
+  email: nick@birdcar.dev
+---
+
+Document content starts here.
+```
+
+Front-matter must appear at the very start of the document. The YAML content is parsed and available via `FrontmatterBlock::getParsedData()`.
 
 ### Extended Task Lists
 
@@ -262,6 +383,14 @@ Inline metadata on task items using `//key:value` syntax:
 ```markdown
 Hey @sarah, can you review this? Also cc @john.doe and @dev-team.
 ```
+
+### Hashtags
+
+```markdown
+Discussing #typescript and #react-hooks in this post.
+```
+
+Identifiers follow the pattern `[a-zA-Z][a-zA-Z0-9_-]*`. The `#` must not be preceded by an alphanumeric character. Hashtags inside code spans are not parsed.
 
 ### Directive Blocks
 
