@@ -15,6 +15,7 @@ class Mention extends AbstractInline
 {
     public function __construct(
         public readonly string $identifier,
+        public readonly ?string $platform = null,
     ) {
         parent::__construct();
     }

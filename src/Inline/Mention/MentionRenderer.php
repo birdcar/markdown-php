@@ -37,7 +37,29 @@ final class MentionRenderer implements NodeRendererInterface
         \assert($node instanceof Mention);
 
         $identifier = $node->identifier;
+        $platform = $node->platform;
 
+        // Platform-prefixed mention
+        if ($platform !== null) {
+            $url = PlatformResolver::resolve($platform, $identifier);
+            $label = PlatformResolver::label($platform);
+
+            if ($url !== null && $label !== null) {
+                return new HtmlElement('a', [
+                    'href' => $url,
+                    'class' => "mention mention--{$platform}",
+                    'title' => "{$label}: {$identifier}",
+                    'rel' => 'noopener noreferrer',
+                ], "@{$platform}:{$identifier}");
+            }
+
+            // Unknown platform — plain span
+            return new HtmlElement('span', [
+                'class' => 'mention',
+            ], "@{$platform}:{$identifier}");
+        }
+
+        // Simple mention with optional resolver
         if ($this->resolver !== null) {
             $resolved = $this->resolver->resolve($identifier);
 

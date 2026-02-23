@@ -39,7 +39,21 @@ final class MentionParser implements InlineParserInterface
 
         $remainder = $cursor->getRemainder();
 
-        // Match @ followed by an identifier: starts with a letter, then letters/digits/._-
+        // Try platform-prefixed mention first: @platform:identifier
+        if (preg_match('/^@([a-z]+):([a-zA-Z0-9._@-]+)/', $remainder, $matches) === 1) {
+            $platform = $matches[1];
+            $identifier = rtrim($matches[2], '._-@');
+
+            if ($identifier !== '') {
+                // Advance cursor past @platform:identifier
+                $cursor->advanceBy(1 + mb_strlen($platform, 'UTF-8') + 1 + mb_strlen($identifier, 'UTF-8'));
+                $inlineContext->getContainer()->appendChild(new Mention($identifier, $platform));
+
+                return true;
+            }
+        }
+
+        // Fall back to simple mention: @identifier
         if (preg_match('/^@([a-zA-Z][a-zA-Z0-9._-]*)/', $remainder, $matches) !== 1) {
             return false;
         }
