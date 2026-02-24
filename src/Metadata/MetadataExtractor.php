@@ -6,6 +6,7 @@ namespace Birdcar\Markdown\Metadata;
 
 use Birdcar\Markdown\Block\Frontmatter\FrontmatterBlock;
 use Birdcar\Markdown\Contracts\ComputedFieldResolverInterface;
+use Birdcar\Markdown\Inline\Footnote\FootnoteRef;
 use Birdcar\Markdown\Inline\Hashtag\Hashtag;
 use Birdcar\Markdown\Inline\Task\TaskMarker;
 use Birdcar\Markdown\Inline\TaskModifier\TaskModifier;
@@ -38,12 +39,15 @@ final class MetadataExtractor
         $tags = $this->extractTags($document, $frontmatter);
         $links = $this->extractLinks($document);
 
+        $footnotes = $this->extractFootnotes($document);
+
         $builtins = [
             'wordCount' => $wordCount,
             'readingTime' => $readingTime,
             'tasks' => $tasks,
             'tags' => $tags,
             'links' => $links,
+            'footnotes' => $footnotes,
         ];
 
         $custom = [];
@@ -240,6 +244,21 @@ final class MetadataExtractor
         }
 
         return $links;
+    }
+
+    /** @return string[] */
+    private function extractFootnotes(Document $document): array
+    {
+        $labels = [];
+        $walker = $document->walker();
+
+        while ($event = $walker->next()) {
+            if ($event->isEntering() && $event->getNode() instanceof FootnoteRef) {
+                $labels[] = $event->getNode()->label;
+            }
+        }
+
+        return array_values(array_unique($labels));
     }
 
     private function getNodeLine(Node $node): ?int
