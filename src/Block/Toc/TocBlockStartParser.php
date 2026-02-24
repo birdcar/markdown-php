@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Birdcar\Markdown\Block\Callout;
+namespace Birdcar\Markdown\Block\Toc;
 
 use Birdcar\Markdown\Support\DirectiveParamParser;
 use League\CommonMark\Parser\Block\BlockStart;
@@ -10,7 +10,7 @@ use League\CommonMark\Parser\Block\BlockStartParserInterface;
 use League\CommonMark\Parser\Cursor;
 use League\CommonMark\Parser\MarkdownParserStateInterface;
 
-final class CalloutBlockStartParser implements BlockStartParserInterface
+final class TocBlockStartParser implements BlockStartParserInterface
 {
     public function tryStart(Cursor $cursor, MarkdownParserStateInterface $parserState): ?BlockStart
     {
@@ -21,18 +21,18 @@ final class CalloutBlockStartParser implements BlockStartParserInterface
         $cursor->advanceToNextNonSpaceOrTab();
         $remainder = $cursor->getRemainder();
 
-        if (preg_match('/^@callout\b(.*)$/', $remainder, $matches) !== 1) {
+        if (preg_match('/^@toc\b(.*)$/', $remainder, $matches) !== 1) {
             return BlockStart::none();
         }
 
         $params = DirectiveParamParser::parse(trim($matches[1]));
-        $type = (string) ($params['type'] ?? 'info');
-        $title = (string) ($params['title'] ?? '');
+        $depth = isset($params['depth']) ? (int) $params['depth'] : 3;
+        $ordered = ($params['ordered'] ?? false) === true;
 
         $cursor->advanceToEnd();
 
-        return BlockStart::of(new CalloutBlockContinueParser(
-            new CalloutBlock($type, $title),
+        return BlockStart::of(new TocBlockContinueParser(
+            new TocBlock($depth, $ordered),
         ))->at($cursor);
     }
 }
