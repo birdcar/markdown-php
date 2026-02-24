@@ -128,7 +128,7 @@ The `BfmEditor` provides a preview toggle button that renders BFM syntax server-
 
 ## The Factory
 
-`BfmEnvironmentFactory::create()` returns a fully configured `Environment` with CommonMark, GFM (minus task lists, which BFM replaces), and all seven BFM extensions:
+`BfmEnvironmentFactory::create()` returns a fully configured `Environment` with CommonMark, GFM (minus task lists, which BFM replaces), and all BFM extensions:
 
 ```php
 use Birdcar\Markdown\Environment\BfmEnvironmentFactory;
@@ -138,6 +138,8 @@ $environment = BfmEnvironmentFactory::create(
     profile: RenderProfile::Html,           // Html (default), Email, or Plain
     embedResolver: $myEmbedResolver,        // optional — implements EmbedResolverInterface
     mentionResolver: $myMentionResolver,    // optional — implements MentionResolverInterface
+    includeResolver: $myIncludeResolver,    // optional — implements IncludeResolverInterface
+    queryResolver: $myQueryResolver,        // optional — implements QueryResolverInterface
     config: [],                             // additional league/commonmark config
 );
 ```
@@ -171,6 +173,16 @@ echo $converter->convert('- [>] Call dentist //due:2025-03-01');
 | `HashtagExtension` | `#project` inline tags |
 | `CalloutExtension` | `@callout`/`@endcallout` container blocks |
 | `EmbedExtension` | `@embed`/`@endembed` leaf blocks |
+| `DetailsExtension` | `@details`/`@enddetails` collapsible sections |
+| `TabsExtension` | `@tabs`/`@tab` tabbed content groups |
+| `FigureExtension` | `@figure`/`@endfigure` images with captions |
+| `AsideExtension` | `@aside`/`@endaside` sidebar content |
+| `MathExtension` | `@math`/`@endmath` LaTeX display blocks |
+| `TocExtension` | `@toc`/`@endtoc` auto table of contents |
+| `IncludeExtension` | `@include`/`@endinclude` file transclusion |
+| `QueryExtension` | `@query`/`@endquery` dynamic content |
+| `EndnotesExtension` | `@endnotes`/`@endendnotes` footnote rendering |
+| `FootnoteExtension` | `[^label]` references and `[^label]:` definitions |
 
 ## Resolvers
 
@@ -214,6 +226,49 @@ class OEmbedResolver implements EmbedResolverInterface
 ```
 
 Without a resolver, embeds render as a `<figure>` with a plain link. With a resolver that returns `html`, the resolved HTML is embedded directly.
+
+**IncludeResolverInterface:**
+
+Resolve file transclusion for `@include` directives:
+
+```php
+use Birdcar\Markdown\Contracts\IncludeResolverInterface;
+
+class FileIncludeResolver implements IncludeResolverInterface
+{
+    public function resolve(string $src, ?string $type, ?string $lines): ?string
+    {
+        $path = base_path($src);
+        return file_exists($path) ? file_get_contents($path) : null;
+    }
+}
+```
+
+Without a resolver, `@include` renders as a placeholder `<div>` with data attributes.
+
+**QueryResolverInterface:**
+
+Resolve dynamic content for `@query` directives:
+
+```php
+use Birdcar\Markdown\Contracts\QueryResolverInterface;
+use League\CommonMark\Node\Block\Document;
+
+class TaskQueryResolver implements QueryResolverInterface
+{
+    public function resolve(array $params, Document $document): array
+    {
+        return Task::query()
+            ->when($params['state'] ?? null, fn ($q, $state) => $q->where('state', $state))
+            ->when($params['tag'] ?? null, fn ($q, $tag) => $q->withTag($tag))
+            ->limit($params['limit'] ?? 10)
+            ->get()
+            ->toArray();
+    }
+}
+```
+
+Without a resolver, `@query` renders as a placeholder `<div>` with data attributes.
 
 **ComputedFieldResolverInterface:**
 
@@ -409,6 +464,85 @@ This is a warning with **bold** text and [links](https://example.com).
 A classic internet moment.
 @endembed
 ```
+
+**Details** (container — collapsible section):
+
+```markdown
+@details summary="Click to expand" open
+Hidden content with **markdown** support.
+@enddetails
+```
+
+**Tabs** (container — tabbed content groups):
+
+```markdown
+@tabs
+@tab label="JavaScript" active
+console.log('hello')
+@endtab
+@tab label="Python"
+print('hello')
+@endtab
+@endtabs
+```
+
+**Figure** (container — image with caption):
+
+```markdown
+@figure src="photo.jpg" alt="A photo" id="fig-1"
+Caption text with **markdown**.
+@endfigure
+```
+
+**Aside** (container — sidebar content):
+
+```markdown
+@aside title="Fun Fact"
+Something tangential but interesting.
+@endaside
+```
+
+**TOC** (leaf — auto-generated table of contents):
+
+```markdown
+@toc depth=2 ordered
+@endtoc
+```
+
+**Math** (leaf — LaTeX display block):
+
+```markdown
+@math label="eq-1"
+E = mc^2
+@endmath
+```
+
+**Include**, **Query**, **Endnotes** (leaf — resolver-dependent or structural):
+
+```markdown
+@include src="./snippets/example.md" type=markdown
+@endinclude
+
+@query state=open tag=engineering limit=5
+@endquery
+
+@endnotes title="References"
+@endendnotes
+```
+
+### Footnotes
+
+Pandoc-style footnote references and definitions:
+
+```markdown
+Some text with a footnote[^1] and another[^note].
+
+[^1]: First footnote content.
+[^note]: Named footnote with longer content
+    that continues on indented lines.
+```
+
+Footnotes are auto-numbered in order of first reference. If no `@endnotes` directive is present, the endnotes section is appended at the end of the document.
 
 ## HTML Output
 
