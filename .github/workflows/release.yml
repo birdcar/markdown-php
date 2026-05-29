@@ -12,6 +12,7 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'   # never run privileged jobs from a dispatched non-main ref
     outputs:
       release_created: ${{ steps.rp.outputs.release_created }}
       tag_name: ${{ steps.rp.outputs.tag_name }}
@@ -28,7 +29,7 @@ jobs:
 
   split:
     needs: [release-please, test]
-    if: needs.release-please.outputs.release_created == 'true'
+    if: github.ref == 'refs/heads/main' && needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -41,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # splitsh-lite needs full history
+          fetch-depth: 0
 
       - name: Strip dev path repositories from the published manifest
         run: |
