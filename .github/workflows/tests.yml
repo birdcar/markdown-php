@@ -40,6 +40,9 @@ jobs:
             testbench: '10'
           - laravel: '13'
             testbench: '11'
+        exclude:
+          - laravel: '13'   # Laravel 13 requires PHP ^8.3
+            php: '8.2'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,8 +76,9 @@ jobs:
             testbench: '10'
           - laravel: '13'
             testbench: '11'
-        # exclude:  # <-- add here if Filament v4 proves incompatible with Laravel 13
-        #   - { laravel: '13' }
+        exclude:
+          - laravel: '13'   # Laravel 13 requires PHP ^8.3
+            php: '8.2'
     steps:
       - uses: actions/checkout@v4
         with:
