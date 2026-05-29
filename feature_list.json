@@ -1,0 +1,49 @@
+{
+  "features": [
+    {
+      "id": "feat-001",
+      "name": "Packagist publishing pipeline",
+      "description": "Three packages publish to Packagist in lockstep via release-please + snapshot split (release.yml), with self.version inter-package deps and a non-EOL CI matrix.",
+      "dependencies": [],
+      "status": "done",
+      "done_when": "All 3 packages installable from Packagist at a tagged version; `composer require birdcar/markdown-filament` resolves filament -> laravel -> php from Packagist with no path repos; CI green.",
+      "evidence": "v0.1.0 published to birdcar/markdown-{php,laravel,filament} on Packagist (2026-05-29). Clean-project `composer require birdcar/markdown-filament` resolved all three at 0.1.0 via self.version. CI matrix green (PHP 8.2-8.5 x Laravel 12-13 x lowest/stable + Filament v4)."
+    },
+    {
+      "id": "feat-002",
+      "name": "Cut a release (recurring)",
+      "description": "Ship the next lockstep version: merge accumulated feat/fix commits via the release-please Release PR.",
+      "dependencies": ["feat-001"],
+      "status": "not-started",
+      "done_when": "Release PR merged; tag vX.Y.Z on all 3 GitHub repos; Packagist shows the new version for all 3; chain installs in a clean project. If the merge didn't trigger the pipeline, the `release` workflow's workflow_dispatch was used.",
+      "evidence": ""
+    },
+    {
+      "id": "feat-003",
+      "name": "Keep the version matrix non-EOL",
+      "description": "Composer constraints and the CI matrix track only currently-supported PHP and Laravel versions.",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "done_when": "composer.json constraints + .github/workflows/tests.yml matrix match non-EOL PHP/Laravel per endoflife.date; CI green. Re-evaluate whenever a version reaches EOL or a new one ships.",
+      "evidence": "As of 2026-05-29: PHP ^8.2 (tested 8.2-8.5); Laravel ^12.0|^13.0 (10 & 11 EOL). L13 requires PHP ^8.3 so L13xPHP8.2 excluded. symfony/yaml widened to ^7.2||^8.0."
+    },
+    {
+      "id": "feat-004",
+      "name": "Promote to v1.0.0 when the BFM API stabilizes",
+      "description": "Commit to a stable public API under strict semver once the core/Laravel/Filament surfaces settle.",
+      "dependencies": ["feat-001"],
+      "status": "not-started",
+      "done_when": "v1.0.0 released across all 3 packages; semver policy documented in README/RELEASING.md; bump-minor-pre-major behavior reviewed.",
+      "evidence": ""
+    },
+    {
+      "id": "feat-005",
+      "name": "Optional release hardening",
+      "description": "Branch protection on main requiring the tests checks, and moving MONOREPO_SPLIT_TOKEN into a main-scoped GitHub Environment.",
+      "dependencies": ["feat-001"],
+      "status": "not-started",
+      "done_when": "main requires a green aggregate tests check before merge; split PAT lives in a GitHub Environment with deployment_branch_policy restricted to main; release still works end-to-end.",
+      "evidence": ""
+    }
+  ]
+}
