@@ -3,6 +3,7 @@ name: release
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}   # manual re-trigger (e.g. if a release-please PR merge didn't spawn a run)
 
 permissions:
   contents: write
