@@ -1,0 +1,105 @@
+{
+  "projectName": "Packagist Publishing for markdown-php",
+  "slug": "packagist-publishing",
+  "date": "2026-05-29",
+  "status": "Draft",
+  "supersedes": null,
+  "confidence": {
+    "score": 95,
+    "dimensions": [
+      { "key": "scope", "score": 100, "label": "Scope", "reason": "In/out is crisp; all optional adjacent items (runbook, LICENSE, branch-alias) explicitly decided and manual provisioning carved out as a human gate." },
+      { "key": "risk", "score": 88, "label": "Risk", "reason": "Main unknowns are Filament v4 × Laravel 13 resolvability and cross-repo push permissions for the split token — both surfaced with mitigations, both resolved by running CI rather than more discussion." },
+      { "key": "effort", "score": 93, "label": "Effort", "reason": "~12 well-understood files across composer config, two workflows, release-please config, and docs; no novel code." },
+      { "key": "clarity", "score": 96, "label": "Clarity", "reason": "Architecture fully specified: release-please (simple, single root component, lockstep) → splitsh-lite split, self.version inter-package deps, non-EOL version matrix." },
+      { "key": "tests", "score": 95, "label": "Tests", "reason": "Done is defined by a passing non-EOL CI matrix plus a first-release validation that resolves the full chain from Packagist in a scratch project." }
+    ]
+  },
+  "problem": [
+    "markdown-php is a Composer monorepo with three packages — birdcar/markdown-php at the repo root, birdcar/markdown-laravel, and birdcar/markdown-filament — but Packagist serves exactly one package per Git repository. Submitting the monorepo as-is publishes only the core package; the Laravel and Filament packages stay uninstallable. The `composer require birdcar/markdown-laravel` and `birdcar/markdown-filament` lines already advertised in the READMEs do not work for anyone.",
+    "There is no release automation, no tags, and no CI. The sub-packages wire themselves together with `@dev` path-repo constraints and `minimum-stability: dev`, which cannot produce stable published releases. The root package is also a dirty publish target: its dist archive would bundle `packages/`, `docs/`, `tests/`, and an unresolvable `spec/` git submodule, none of which a consumer of the core library needs."
+  ],
+  "goals": [
+    "All three packages are installable from Packagist by external users via `composer require birdcar/markdown-{php,laravel,filament}`.",
+    "Releases are fully automated from Conventional Commits: merging a Release PR cuts a tag, splits the sub-packages, and publishes to Packagist with no manual tagging.",
+    "One lockstep version across all three packages, starting at v0.1.0, with inter-package dependencies expressed via Composer's `self.version`.",
+    "CI verifies every PHP and Laravel version the composer.json files claim — constrained to currently non-EOL releases only.",
+    "The published core package archive is clean: no monorepo scaffolding, no submodule."
+  ],
+  "successCriteria": [
+    "Merging the Release PR creates tag v0.1.0 and a GitHub Release on the monorepo.",
+    "The split job mirrors packages/laravel → birdcar/markdown-laravel and packages/filament → birdcar/markdown-filament and pushes the v0.1.0 tag to both split repos.",
+    "Packagist shows version 0.1.0 for all three packages after the auto-update webhook fires.",
+    "In a clean scratch project with no path repositories, `composer require birdcar/markdown-filament` resolves the full chain (filament → laravel → php) entirely from Packagist.",
+    "The CI matrix passes: PHP 8.2 / 8.3 / 8.4 / 8.5 × Laravel 12 / 13, run with both --prefer-lowest and --prefer-stable, plus Filament v4.",
+    "`composer validate --strict` passes for all three composer.json files.",
+    "A downloaded dist archive of birdcar/markdown-php contains src/ but not packages/, docs/, tests/, or spec/."
+  ],
+  "scope": {
+    "mvp": [
+      { "item": "composer.json release-readiness across all 3 packages: @dev → self.version, drop/relax minimum-stability: dev + prefer-stable", "reason": "Without this the packages cannot resolve as stable published releases." },
+      { "item": "Narrow dependency constraints to non-EOL versions: illuminate/support → ^12.0|^13.0, orchestra/testbench aligned (^10.0|^11.0); keep php ^8.2 (covers 8.2–8.5)", "reason": "Laravel 10 and 11 are EOL as of 2026-05-29; the plan should only claim support it tests." },
+      { "item": ".gitattributes with export-ignore for packages/, docs/, tests/, spec/, .github/, phpunit.xml on the root package", "reason": "Keeps the published core dist archive clean and free of the unresolvable spec/ submodule." },
+      { "item": "release-please config + manifest: simple release-type, single root '.' component, lockstep, bump-minor-pre-major=true, bump-patch-for-minor-pre-major=false, tag format v${version}", "reason": "Automates versioning/changelog/tagging from Conventional Commits without touching composer.json version fields." },
+      { "item": "release.yml: release-please job → split job gated on release_created, re-runs tests, then splitsh-lite via danharrin/monorepo-split-github-action propagating the tag", "reason": "This is the publish pipeline." },
+      { "item": "Reusable tests.yml (workflow_call) matrix + ci.yml invoking it on PR and push to main", "reason": "Gates the Release PR and is reused by the split job's re-gate." }
+    ],
+    "full": [
+      { "item": "RELEASING.md runbook: one-time provisioning (create split repos, PAT secret, Packagist submission + webhook, branch protection) and the ongoing merge-the-Release-PR flow", "reason": "The manual steps are the easiest part to get wrong." },
+      { "item": "MIT LICENSE file at root + packages/laravel + packages/filament", "reason": "Packagist flags missing LICENSE files; split repos inherit their subtree's copy." },
+      { "item": "composer extra.branch-alias (dev-main => 0.x-dev) on all 3 packages", "reason": "Lets consumers install dev-main and keeps self.version resolvable on the default branch." },
+      { "item": "--prefer-lowest and --prefer-stable legs in the matrix", "reason": "Verifies both the floor and ceiling of each declared version range." }
+    ],
+    "stretch": [
+      { "item": "PHPStan (level 8) added as a CI job alongside tests" },
+      { "item": "Scheduled weekly CI run to catch dependency drift" }
+    ],
+    "outOfScope": [
+      { "item": "Creating the birdcar/markdown-laravel and birdcar/markdown-filament GitHub repos", "reason": "Requires your GitHub account; documented in RELEASING.md and executed in the human-gate phase." },
+      { "item": "Generating the split PAT secret", "reason": "Requires your account and repo admin rights." },
+      { "item": "Submitting packages to Packagist and enabling the auto-update webhook/GitHub App", "reason": "Requires your Packagist account." },
+      { "item": "Configuring branch protection requiring the tests check", "reason": "Repo admin action; documented in the runbook." },
+      { "item": "Independent per-package versioning", "reason": "Explicitly rejected in favor of lockstep + self.version." }
+    ],
+    "future": [
+      "Promote to v1.0.0 once the BFM API stabilizes.",
+      "Add/remove PHP and Laravel matrix legs as versions release or reach EOL."
+    ]
+  },
+  "execution": {
+    "strategy": "Hybrid",
+    "phases": [
+      {
+        "title": "Package release-readiness",
+        "risk": "low",
+        "blocking": true,
+        "specPath": "docs/ideation/packagist-publishing/spec-phase-1.md",
+        "notes": "Edit all 3 composer.json (self.version, stability, non-EOL constraints, branch-alias), add root .gitattributes export-ignore, add MIT LICENSE files. Parallelizable with Phase 2 (no shared files)."
+      },
+      {
+        "title": "CI test matrix",
+        "risk": "low",
+        "blocking": true,
+        "specPath": "docs/ideation/packagist-publishing/spec-phase-2.md",
+        "notes": "Reusable tests.yml (workflow_call) matrix — PHP 8.2/8.3/8.4/8.5 × Laravel 12/13, prefer-lowest + prefer-stable, Filament v4 — plus ci.yml on PR/push. Parallelizable with Phase 1."
+      },
+      {
+        "title": "Release automation",
+        "risk": "medium",
+        "blocking": true,
+        "specPath": "docs/ideation/packagist-publishing/spec-phase-3.md",
+        "prereqs": ["Package release-readiness", "CI test matrix"],
+        "notes": "release-please-config.json + manifest, release.yml (release-please → split, re-gated, danharrin/monorepo-split-github-action), RELEASING.md runbook."
+      },
+      {
+        "title": "Provision & first release",
+        "risk": "medium",
+        "blocking": true,
+        "kind": "gate",
+        "specPath": "docs/ideation/packagist-publishing/spec-phase-4.md",
+        "prereqs": ["Release automation"],
+        "notes": "HUMAN GATE: create the 2 split repos, add the PAT secret, submit all 3 to Packagist + enable the webhook, set branch protection, then merge the first Release PR and verify the full chain installs from Packagist."
+      }
+    ],
+    "agentTeamPrompt": "Lead orchestrates four phases for Packagist publishing of the markdown-php monorepo. Dispatch Phase 1 (Package release-readiness — composer.json edits, .gitattributes, LICENSE files) and Phase 2 (CI test matrix — tests.yml + ci.yml) in PARALLEL: they share no files (Phase 1 touches composer.json/.gitattributes/LICENSE, Phase 2 touches .github/workflows/tests.yml + ci.yml). When both complete, run Phase 3 (Release automation — release-please config + release.yml + RELEASING.md), which depends on both. Phase 4 is a HUMAN GATE — do not automate it; surface the RELEASING.md checklist to the user and stop."
+  }
+}
